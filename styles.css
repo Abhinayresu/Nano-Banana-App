@@ -1,0 +1,40 @@
+/* Icon floating animation */
+button:hover {
+    box-shadow: 0 0 20px rgba(255, 255, 0, 0.5);
+    transform: scale(1.07) rotate(-1deg);
+}
+
+/* Smooth fade for generated image */
+#generatedImage {
+    opacity: 0;
+    transition: opacity 0.8s ease-in-out;
+}
+#generatedImage[src] {
+    opacity: 1;
+}
+
+/* Custom file input button styling */
+.custom-file-input::-webkit-file-upload-button {
+    visibility: hidden;
+}
+.custom-file-input::before {
+    content: 'Select an image to upload';
+    display: inline-block;
+    background: #2563EB;
+    border: 1px solid #3B82F6;
+    border-radius: 9999px;
+    padding: 0.5rem 1rem;
+    outline: none;
+    white-space: nowrap;
+    -webkit-user-select: none;
+    cursor: pointer;
+    text-align: center;
+    color: white;
+    font-weight: 500;
+}
+.custom-file-input:hover::before {
+    background-color: #1D4ED8;
+}
+.custom-file-input:active::before {
+    background-color: #1E40AF;
+}

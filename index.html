@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nano Banana Image App</title>
+    <!-- Tailwind CSS CDN for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121212;
+            color: #E0E0E0;
+        }
+        .container-fluid {
+            max-width: 1200px;
+            margin: auto;
+            padding: 2rem;
+        }
+        /* Hide the default file input button */
+        .custom-file-input::-webkit-file-upload-button {
+            visibility: hidden;
+        }
+        .custom-file-input::before {
+            content: 'Select an image to upload';
+            display: inline-block;
+            background: #2563EB;
+            border: 1px solid #3B82F6;
+            border-radius: 9999px;
+            padding: 0.5rem 1rem;
+            outline: none;
+            white-space: nowrap;
+            -webkit-user-select: none;
+            cursor: pointer;
+            text-align: center;
+            color: white;
+            font-weight: 500;
+        }
+        .custom-file-input:hover::before {
+            background-color: #1D4ED8;
+        }
+        .custom-file-input:active::before {
+            background-color: #1E40AF;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 min-h-screen flex items-center justify-center p-4">
+
+    <!-- Main Application Container -->
+    <div class="container-fluid bg-gray-800 p-8 rounded-xl shadow-lg w-full max-w-4xl">
+        <h1 class="text-3xl sm:text-4xl font-bold text-center mb-6 text-yellow-300">
+            Nano Banana Image App
+        </h1>
+        <p class="text-center text-gray-400 mb-8">
+            Generate new images or edit an existing one using the power of Gemini 2.5 Flash Image.
+        </p>
+
+        <!-- API Key message for user -->
+        <div class="mb-6 text-center">
+            <p class="text-sm text-green-400 mt-2">
+                Your API key is securely stored and used on the backend.
+            </p>
+        </div>
+
+        <!-- Image Upload Section -->
+        <div class="flex flex-col sm:flex-row items-center justify-between mb-6 space-y-4 sm:space-y-0 sm:space-x-4">
+            <div class="w-full sm:w-1/2">
+                <label for="imageUpload" class="block text-sm font-medium text-gray-300 mb-2">
+                    Optional: Upload an image to edit
+                </label>
+                <input
+                    type="file"
+                    id="imageUpload"
+                    class="custom-file-input w-full p-3 bg-gray-700 rounded-md border border-gray-600 text-gray-300 focus:outline-none"
+                    accept="image/*"
+                />
+            </div>
+            <div class="w-full sm:w-1/2 flex items-center justify-center border border-dashed border-gray-600 rounded-lg p-4 h-48 sm:h-auto">
+                <img id="imagePreview" src="" alt="Image Preview" class="hidden max-h-40 rounded-lg object-contain" />
+                <span id="previewPlaceholder" class="text-sm text-gray-500">Image preview will appear here</span>
+            </div>
+        </div>
+
+        <!-- Prompt Input -->
+        <div class="mb-6">
+            <label for="promptInput" class="block text-sm font-medium text-gray-300 mb-1">
+                Image Prompt
+            </label>
+            <textarea
+                id="promptInput"
+                class="w-full p-3 bg-gray-700 rounded-md border border-gray-600 text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                rows="4"
+                placeholder="Describe the image you want to generate or the changes you want to make..."
+            ></textarea>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex justify-center">
+            <button
+                id="generateButton"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+            >
+                Generate Image
+            </button>
+        </div>
+
+        <!-- Loading Indicator and Status -->
+        <div id="statusContainer" class="mt-8 text-center hidden">
+            <div id="loading" class="flex items-center justify-center space-x-2">
+                <div class="w-4 h-4 bg-yellow-400 rounded-full animate-bounce-slow"></div>
+                <div class="w-4 h-4 bg-yellow-400 rounded-full animate-bounce-medium"></div>
+                <div class="w-4 h-4 bg-yellow-400 rounded-full animate-bounce-fast"></div>
+                <span class="text-yellow-400 text-lg ml-2">Generating...</span>
+            </div>
+            <p id="errorMessage" class="text-red-500 mt-2 hidden"></p>
+        </div>
+
+        <!-- Generated Image Display -->
+        <div id="imageResult" class="mt-8 hidden">
+            <h3 class="text-xl font-semibold text-center text-gray-300 mb-4">Generated Image</h3>
+            <div class="w-full flex flex-col items-center justify-center p-2 bg-gray-700 rounded-xl shadow-inner">
+                <img id="generatedImage" src="" alt="Generated Image" class="w-full rounded-lg shadow-md max-w-xl" />
+                <button
+                    id="downloadButton"
+                    class="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+                >
+                    Download Image
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get UI elements
+        const imageUpload = document.getElementById('imageUpload');
+        const promptInput = document.getElementById('promptInput');
+        const generateButton = document.getElementById('generateButton');
+        const imageResultDiv = document.getElementById('imageResult');
+        const generatedImage = document.getElementById('generatedImage');
+        const statusContainer = document.getElementById('statusContainer');
+        const loadingDiv = document.getElementById('loading');
+        const errorMessageDiv = document.getElementById('errorMessage');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewPlaceholder = document.getElementById('previewPlaceholder');
+        const downloadButton = document.getElementById('downloadButton');
+
+        // Event listener for image upload
+        imageUpload.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.classList.remove('hidden');
+                    previewPlaceholder.classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreview.src = '';
+                imagePreview.classList.add('hidden');
+                previewPlaceholder.classList.remove('hidden');
+            }
+        });
+
+        // Event listener for the generate button
+        generateButton.addEventListener('click', async () => {
+            const promptText = promptInput.value.trim();
+            const imageFile = imageUpload.files[0];
+
+            // Basic validation
+            if (!promptText && !imageFile) {
+                showStatus('Please enter a prompt or upload an image to edit.', 'error');
+                return;
+            }
+
+            // Show loading state
+            showStatus('Generating...', 'loading');
+            generateButton.disabled = true;
+            imageResultDiv.classList.add('hidden');
+
+            try {
+                // Read the image file as a base64 string if it exists
+                let base64Image = null;
+                let mimeType = null;
+                if (imageFile) {
+                    const base64Full = await readFileAsBase64(imageFile);
+                    base64Image = base64Full.split(',')[1];
+                    mimeType = imageFile.type;
+                }
+
+                // Make the API call to your backend server
+                const response = await fetch("http://localhost:3000/generate", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        promptText,
+                        base64Image,
+                        mimeType,
+                    }),
+                });
+                
+                // Handle non-ok responses
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || 'API request failed');
+                }
+
+                const result = await response.json();
+
+                // Check for image data in the response
+                const imagePart = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+
+                if (imagePart && imagePart.inlineData) {
+                    const imageData = imagePart.inlineData.data;
+                    const imageMimeType = imagePart.inlineData.mimeType;
+
+                    // Update the image source with the generated image
+                    generatedImage.src = `data:${imageMimeType};base64,${imageData}`;
+                    imageResultDiv.classList.remove('hidden');
+                    showStatus('Image generated successfully!', 'success');
+                } else {
+                    throw new Error('No image data found in the API response.');
+                }
+
+            } catch (error) {
+                console.error('API Error:', error);
+                showStatus(`Error: ${error.message}`, 'error');
+                generatedImage.src = '';
+                imageResultDiv.classList.add('hidden');
+            } finally {
+                // Re-enable the button
+                generateButton.disabled = false;
+            }
+        });
+
+        // Event listener for the download button
+        downloadButton.addEventListener('click', () => {
+            const imageSrc = generatedImage.src;
+            if (imageSrc) {
+                const link = document.createElement('a');
+                link.href = imageSrc;
+                link.download = 'generated-image.png'; // Set the default file name
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        });
+
+        // Helper function to read a file as a Base64 string
+        function readFileAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Helper function to show status messages
+        function showStatus(message, type) {
+            statusContainer.classList.remove('hidden');
+            loadingDiv.classList.add('hidden');
+            errorMessageDiv.classList.add('hidden');
+
+            if (type === 'loading') {
+                loadingDiv.classList.remove('hidden');
+            } else if (type === 'error') {
+                errorMessageDiv.classList.remove('hidden');
+                errorMessageDiv.textContent = message;
+            } else { // success
+                statusContainer.classList.add('hidden');
+            }
+        }
+    </script>
+
+</body>
+</html>
